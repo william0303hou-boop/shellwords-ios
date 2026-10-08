@@ -1,0 +1,8 @@
+node_modules/
+ios/
+build/
+Payload/
+*.ipa
+resources/icon.png
+resources/splash.png
+.DS_Store

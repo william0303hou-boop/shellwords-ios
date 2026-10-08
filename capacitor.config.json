@@ -1,0 +1,8 @@
+{
+  "appId": "com.shellwords.app",
+  "appName": "貝殼單詞",
+  "webDir": "www",
+  "ios": {
+    "scheme": "貝殼單詞"
+  }
+}

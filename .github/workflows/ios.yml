@@ -1,0 +1,71 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build unsigned IPA on macOS
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prepare web assets (download latest app)
+        run: python3 scripts/prepare_web.py "https://aka.doubaocdn.com/s/qjvU6yZOJI"
+
+      - name: Generate icon & splash PNG (from SVG)
+        run: npm run icons
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Generate native app icons
+        run: npx capacitor-assets generate --ios
+
+      - name: Sync web assets
+        run: npx cap sync ios
+
+      - name: Build app (no code signing)
+        run: |
+          xcodebuild clean build \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        run: |
+          ls build/Build/Products/Release-iphoneos/
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr Shellwords-unsigned.ipa Payload
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: 貝殼單詞 Build ${{ github.run_number }}（unsigned IPA）
+          body: |
+            未簽名 IPA，無法直接安裝，請使用以下任一方式重簽後安裝：
+            - AltStore / SideStore（用 Apple ID 重簽，免費帳號 App 有效期 7 天）
+            - TrollStore（僅限支援的 iOS 版本）
+          files: Shellwords-unsigned.ipa
